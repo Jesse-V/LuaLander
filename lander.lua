@@ -136,11 +136,9 @@ end
 -- burn rates based on provided information
 function strategyOne(velocity, altitude, fuel)
 	while true do
-		local newBurn = 1.0
+		local newBurn = 1.0 -- 0.0 is no burn, 1.0 is full burn
 
-		-- Todo coroutine should calculate your next burn rate given the provided information
-		-- and then coroutine.yield the next burn rate (0.0 is no burn, 1.0 is full burn).
-		-- Make sure you are pulling information back from your call to yield!
+		coroutine.yield(newBurn)
 	end
 end
 
@@ -163,16 +161,17 @@ end
 function Game:play()
 	local strategy = self.strategy
 	local lander = self.lander
+
 	while (not lander:reachedSurface()) do
 
 		-- Print the relative position of the lander
 		print(lander:positionString())
 
 		-- Get the burn rate from your strategy and pass it the next set of values to work on
-		local burnRate = 1 --strategyOne(self.velocity, self.altitude, self.fuelReserve)
+		local status, burnRate = coroutine.resume(strategy, self.velocity, self.altitude, self.fuelReserve)
 
 		-- Move the lander to a new position by providing it with its new burn rate
-		lander:move(1)
+		lander:move(burnRate)
 	end
 
 	print("contact!")
