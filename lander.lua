@@ -79,7 +79,7 @@ end
 -- Checks if the lander has reached the surface, returns true if it has, false otherwise
 -- Check if the lander has reached the surface and return the proper value
 function Lander:reachedSurface()
-	return self.altitude > 0
+	return self.altitude <= self.planet.ground
 end
 
 
@@ -87,7 +87,7 @@ end
 -- Checks if the lander has reached the surface and safely landed
 -- Return true if the lander has reached the surface and did so at a safe velocity
 function Lander:landed()
-	return self:reachedSurface() and velocity < MAX_LANDING_VELOCITY
+	return self:reachedSurface() and self.velocity >= MAX_LANDING_VELOCITY
 end
 
 
@@ -116,13 +116,18 @@ end
 -- planetary surface with | representing planet surface and * being the lander.
 -- For example:            |                 *
  function Lander:positionString()
-	local strBuffer = "   |"
+	local strBuffer = ""
+
+	for var = 1, self.planet.ground do
+		strBuffer = strBuffer .. " "
+	end
+	strBuffer = strBuffer .. "|"
 
 	for var = 1, self.altitude do
 		strBuffer = strBuffer .. " "
 	end
 
-	return strBuffer .. ">#` (" .. self.altitude .. ")"
+	return strBuffer .. ">#` (" .. self.altitude .. ", " .. self.velocity .. ")"
 end
 
 
@@ -133,7 +138,7 @@ function strategyOne(velocity, altitude, fuel)
 	while true do
 		local newBurn = 1.0
 
-		-- Todo Your coroutine should calculate your next burn rate given the provided information
+		-- Todo coroutine should calculate your next burn rate given the provided information
 		-- and then coroutine.yield the next burn rate (0.0 is no burn, 1.0 is full burn).
 		-- Make sure you are pulling information back from your call to yield!
 	end
@@ -159,20 +164,28 @@ function Game:play()
 	local strategy = self.strategy
 	local lander = self.lander
 	while (not lander:reachedSurface()) do
-		-- Todo The main game logic will reside in this loop - until you start filling things in it won't do anything
 
 		-- Print the relative position of the lander
 		print(lander:positionString())
 
-		-- Todo Get the burn rate from your strategy and pass it the next set of values to work on
+		-- Get the burn rate from your strategy and pass it the next set of values to work on
+		local burnRate = 1 --strategyOne(self.velocity, self.altitude, self.fuelReserve)
 
-		-- Todo Move the lander to a new position by providing it with its new burn rate
+		-- Move the lander to a new position by providing it with its new burn rate
+		lander:move(1)
 	end
 
-	-- Todo Print out the lander state
+	print("contact!")
 
-	-- Todo Print out the correct message depending on if the lander landed safely or not
-	print(CRASHED_MSG)
+	-- Print out the lander state
+	--print(Lander)
+
+	-- Print out the correct message depending on if the lander landed safely or not
+	if (lander:landed()) then
+		print(LANDED_MSG)
+	else
+		print(CRASHED_MSG)
+	end
 end
 
 
