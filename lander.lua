@@ -18,7 +18,7 @@ MAX_LANDING_VELOCITY = -1.5
 
 -- Messages if lander lands/crashes
 CRASHED_MSG = "Crashed. Come now, we have to be better than the Russians!\n"
-LANDED_MSG = "Landed Safely! One small step for a man, one giant leap for mankind!\n"
+LANDED_MSG = "Landed Safely! That's one small step for a man, one giant leap for mankind.\n"
 
 -- Planet constants
 PLUTO_GRAVITY = 0.5
@@ -95,19 +95,21 @@ end
  -- Moves the lander based on a requested burn rate and also validates that
  -- the requested burn rate is valid.
 function Lander:move(burnRate)
-	local actualBurnRate = burnRate
+	if (burnRate > 1) then
+		burnRate = 1
+	end
 
 	-- Adjust requested burn rate if not enough fuel left, (fuelReserve / DELTA_TIME) if not enough left
 	if (self.fuelReserve < burnRate) then
-		actualBurnRate = self.fuelReserve / DELTA_TIME
+		burnRate = self.fuelReserve / DELTA_TIME
 	end
 
 	-- Decrements the amount of fuel consumed from the fuel reserve
-	self.fuelReserve = self.fuelReserve - actualBurnRate
+	self.fuelReserve = self.fuelReserve - burnRate
 
 	-- Move the lander to the next altitude and velocity
 	self:nextAltitude()
-	self:nextVelocity(actualBurnRate)
+	self:nextVelocity(burnRate)
 end
 
 
@@ -123,22 +125,41 @@ end
 	end
 	strBuffer = strBuffer .. "|"
 
-	for var = 1, self.altitude do
+	local relativeAltitude = self.altitude - self.planet.ground
+	for var = 1, relativeAltitude do
 		strBuffer = strBuffer .. " "
 	end
 
-	return strBuffer .. ">#` (" .. self.altitude .. ", " .. self.velocity .. ")"
+	return strBuffer .. ">#` (" .. self.altitude .. ", " .. self.velocity .. ", " .. self.fuelReserve .. ")"
 end
 
 
 
--- A coroutine which implements a strategy to land the lander safely by yielding
--- burn rates based on provided information
-function strategyOne(velocity, altitude, fuel)
+-- A coroutine which implements a strategy to land the lander safely on Pluto
+function plutoLandingStrategy(lander)
 	while true do
-		local newBurn = 1.0 -- 0.0 is no burn, 1.0 is full burn
+		local newBurn = 0.0 -- 0.0 is no burn, 1.0 is full burn
 
-		coroutine.yield(newBurn)
+		if (lander.altitude <= 35) then
+			newBurn = 1.0
+		end
+
+		lander = coroutine.yield(newBurn)
+	end
+end
+
+
+
+-- A coroutine which implements a strategy to land the lander safely on Mars
+function marsLandingStrategy(lander)
+	while true do
+		local newBurn = 0.0 -- 0.0 is no burn, 1.0 is full burn
+
+		if (lander.altitude <= 40) then
+			newBurn = 1.0
+		end
+
+		lander = coroutine.yield(newBurn)
 	end
 end
 
@@ -168,19 +189,23 @@ function Game:play()
 		print(lander:positionString())
 
 		-- Get the burn rate from your strategy and pass it the next set of values to work on
-		local status, burnRate = coroutine.resume(strategy, self.velocity, self.altitude, self.fuelReserve)
+		local status, burnRate = coroutine.resume(strategy, lander)
+		if (not status) then
+			print("COROUTINE ERROR!")
+		end
 
 		-- Move the lander to a new position by providing it with its new burn rate
 		lander:move(burnRate)
 	end
-
-	print("contact!")
 
 	-- Print out the lander state
 	--print(Lander)
 
 	-- Print out the correct message depending on if the lander landed safely or not
 	if (lander:landed()) then
+		lander.altitude = 0
+		lander.velocity = 0
+		print(lander:positionString())
 		print(LANDED_MSG)
 	else
 		print(CRASHED_MSG)
@@ -190,10 +215,24 @@ end
 
 
 -- Start of the program, setup the game
-local mars = Planet(MARS_GRAVITY, MARS_HEIGHT)
 local pluto = Planet(PLUTO_GRAVITY, PLUTO_HEIGHT)
-local myLander = Lander(LANDER_INIT_VELOCITY, LANDER_INIT_ALTITUDE, LANDER_INIT_FUEL, LANDER_THRUSTER_STRENGTH, pluto)
-local game = Game(myLander, strategyOne)
+local plutoLander = Lander(LANDER_INIT_VELOCITY, LANDER_INIT_ALTITUDE, LANDER_INIT_FUEL, LANDER_THRUSTER_STRENGTH, pluto)
+local plutoLandingGame = Game(plutoLander, plutoLandingStrategy)
+
+local mars = Planet(MARS_GRAVITY, MARS_HEIGHT)
+local marsLander = Lander(LANDER_INIT_VELOCITY, LANDER_INIT_ALTITUDE, LANDER_INIT_FUEL, LANDER_THRUSTER_STRENGTH, mars)
+local marsLandingGame = Game(marsLander, marsLandingStrategy)
+
+
 
 -- Play the game
-game:play()
+print()
+print()
+
+print("Starting Pluto lander simulator")
+plutoLandingGame:play()
+print()
+
+print("Starting Mars lander simulator")
+marsLandingGame:play()
+print()
