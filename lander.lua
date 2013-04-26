@@ -8,7 +8,8 @@ DELTA_TIME = 1.0
 -- Starting values for the lander
 LANDER_INIT_ALTITUDE = 50.0
 LANDER_INIT_VELOCITY = 0.0
-LANDER_INIT_FUEL = 10.0
+PLUTO_INIT_FUEL = 10.0
+MARS_INIT_FUEL = 25.0
 
 -- Lander thruster strength
 LANDER_THRUSTER_STRENGTH = 1.0
@@ -17,8 +18,9 @@ LANDER_THRUSTER_STRENGTH = 1.0
 MAX_LANDING_VELOCITY = -1.5
 
 -- Messages if lander lands/crashes
-CRASHED_MSG = "Crashed. Come now, we have to be better than the Russians!\n"
-LANDED_MSG = "Landed Safely! That's one small step for a man, one giant leap for mankind.\n"
+CRASHED_MSG = "Crashed. Come now, we aren't North Korea!\n"
+MOON_LANDING_MSG = "Landed safely on the Moon! That's one small step for a man, one giant leap for mankind.\n"
+MARS_LANDING_MSG = "Landed safely on Mars! Let this historic occasion represent a new landmark for the freedom, curiosity, and ingenuity of all inhabitants of Earth.\n"
 
 -- Planet constants
 PLUTO_GRAVITY = 0.5
@@ -26,6 +28,7 @@ PLUTO_HEIGHT = 10.0
 
 MARS_GRAVITY = 0.9
 MARS_HEIGHT = 2.0
+
 -----------------------------------------------------------------
 
 -- The Planet class models a Planet, which has a gravity and a ground height.
@@ -71,7 +74,7 @@ end
 -- Overload of tostring for the Lander class
 -- Return a string containing the Lander state in the format: Altitude: 15.0 Velocity: -10.5 Fuel: 12.0
 function Lander:__tostring()
-	return "Altitude: " .. self.altitude .. " Velocity: " .. self.velocity .. " Fuel: " .. self.fuelReserve
+	return "Raw altitude: " .. self.altitude .. " 	Velocity: " .. self.velocity .. "	Fuel: " .. self.fuelReserve
 end
 
 
@@ -120,17 +123,17 @@ end
  function Lander:positionString()
 	local strBuffer = ""
 
-	for var = 1, self.planet.ground do
+	for var = 0, self.planet.ground do
 		strBuffer = strBuffer .. " "
 	end
 	strBuffer = strBuffer .. "|"
 
-	local relativeAltitude = self.altitude - self.planet.ground
+	local relativeAltitude = math.ceil(self.altitude - self.planet.ground)
 	for var = 1, relativeAltitude do
 		strBuffer = strBuffer .. " "
 	end
 
-	return strBuffer .. ">#` (" .. self.altitude .. ", " .. self.velocity .. ", " .. self.fuelReserve .. ")"
+	return strBuffer .. ">#`"-- (Alt:" .. self.altitude .. ", V:" .. self.velocity .. ", F:" .. self.fuelReserve .. ")"
 end
 
 
@@ -153,10 +156,15 @@ end
 -- A coroutine which implements a strategy to land the lander safely on Mars
 function marsLandingStrategy(lander)
 	while true do
-		local newBurn = 0.0 -- 0.0 is no burn, 1.0 is full burn
+		-- burn rate of 0.9 will counter gravity acceleration, a full burn is a net +0.1 velocity
+		local newBurn = 0.0
 
-		if (lander.altitude <= 40) then
-			newBurn = 1.0
+		if (lander.altitude < 50) then
+			newBurn = 0.85
+		end
+
+		if (lander.altitude <= 25) then
+			newBurn = 1.0 --full burn
 		end
 
 		lander = coroutine.yield(newBurn)
@@ -173,6 +181,17 @@ function Game:__init(lander, strategy)
 	self.lander = lander
 	self.strategy = coroutine.create(strategy)
 end
+
+
+
+-- Start of the program, setup the game
+local pluto = Planet(PLUTO_GRAVITY, PLUTO_HEIGHT)
+local plutoLander = Lander(LANDER_INIT_VELOCITY, LANDER_INIT_ALTITUDE, PLUTO_INIT_FUEL, LANDER_THRUSTER_STRENGTH, pluto)
+local plutoLandingGame = Game(plutoLander, plutoLandingStrategy)
+
+local mars = Planet(MARS_GRAVITY, MARS_HEIGHT)
+local marsLander = Lander(LANDER_INIT_VELOCITY, LANDER_INIT_ALTITUDE, MARS_INIT_FUEL, LANDER_THRUSTER_STRENGTH, mars)
+local marsLandingGame = Game(marsLander, marsLandingStrategy)
 
 
 
@@ -198,30 +217,23 @@ function Game:play()
 		lander:move(burnRate)
 	end
 
+	lander.altitude = lander.planet.ground
+	print(lander:positionString())
+
 	-- Print out the lander state
-	--print(Lander)
+	print(lander)
 
 	-- Print out the correct message depending on if the lander landed safely or not
 	if (lander:landed()) then
-		lander.altitude = 0
-		lander.velocity = 0
-		print(lander:positionString())
-		print(LANDED_MSG)
+		if (lander.planet == mars) then
+			print(MARS_LANDING_MSG)
+		else
+			print(MOON_LANDING_MSG)
+		end
 	else
 		print(CRASHED_MSG)
 	end
 end
-
-
-
--- Start of the program, setup the game
-local pluto = Planet(PLUTO_GRAVITY, PLUTO_HEIGHT)
-local plutoLander = Lander(LANDER_INIT_VELOCITY, LANDER_INIT_ALTITUDE, LANDER_INIT_FUEL, LANDER_THRUSTER_STRENGTH, pluto)
-local plutoLandingGame = Game(plutoLander, plutoLandingStrategy)
-
-local mars = Planet(MARS_GRAVITY, MARS_HEIGHT)
-local marsLander = Lander(LANDER_INIT_VELOCITY, LANDER_INIT_ALTITUDE, LANDER_INIT_FUEL, LANDER_THRUSTER_STRENGTH, mars)
-local marsLandingGame = Game(marsLander, marsLandingStrategy)
 
 
 
