@@ -123,7 +123,7 @@ end
  function Lander:positionString()
 	local strBuffer = ""
 
-	for var = 0, self.planet.ground do
+	for var = 1, self.planet.ground do
 		strBuffer = strBuffer .. " "
 	end
 	strBuffer = strBuffer .. "|"
